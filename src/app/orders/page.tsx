@@ -30,10 +30,9 @@ export default async function OrdersPage() {
   return (
     <div className="min-h-screen bg-slate-50/80 pb-20">
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-40">
-        <Link href="/">
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+        {/* ✅ Button asChild বাদ */}
+        <Link href="/" className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-slate-100 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-700" />
         </Link>
         <h1 className="text-lg font-bold text-slate-800">সব অর্ডার</h1>
       </header>

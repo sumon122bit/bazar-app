@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { User, Phone, Mail, Shield, ArrowLeft } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
@@ -11,25 +10,21 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
   return (
     <div className="min-h-screen bg-slate-50/80 pb-20">
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-40">
-        <Link href="/">
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+        {/* ✅ Button asChild বাদ, সরাসরি Link এবং Tailwind */}
+        <Link href="/" className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-slate-100 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-700" />
         </Link>
         <h1 className="text-lg font-bold text-slate-800">আমার প্রোফাইল</h1>
       </header>
 
       <main className="max-w-lg mx-auto px-4 mt-6 space-y-6">
-        {/* প্রোফাইল কার্ড */}
         <div className="flex flex-col items-center">
           <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-4xl mb-3 shadow-inner">
             {profile?.full_name?.charAt(0) || <User className="w-10 h-10" />}
@@ -40,7 +35,6 @@ export default async function ProfilePage() {
           </span>
         </div>
 
-        {/* তথ্যের তালিকা */}
         <Card className="border-0 shadow-sm">
           <CardContent className="p-0 divide-y">
             <div className="flex items-center gap-4 p-4">
@@ -69,7 +63,6 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* লগআউট বাটন */}
         <div className="flex justify-center mt-4">
           <LogoutButton />
         </div>

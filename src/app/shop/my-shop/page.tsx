@@ -1,0 +1,179 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Store, PackageSearch } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
+
+export default function MyShopPage() {
+  const [shop, setShop] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [description, setDescription] = useState("");
+  
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchMyShop = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { 
+          router.push("/login"); 
+          return; 
+        }
+
+        // ✅ .single() এর বদলে .maybeSingle() ব্যবহার করা হলো, যা এরর দেয় না
+        const { data, error } = await supabase
+          .from("shops")
+          .select("*")
+          .eq("owner_id", user.id)
+          .limit(1)
+          .maybeSingle(); 
+        
+        if (error) throw error;
+
+        if (data) {
+          setShop(data);
+          setName(data.name);
+          setAddress(data.address);
+          setPhone(data.phone || "");
+          setDescription(data.description || "");
+        }
+      } catch (err) {
+        console.error("Error fetching shop:", err);
+        setMessage("দোকানের তথ্য আনতে সমস্যা হয়েছে।");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMyShop();
+  }, []);
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const { error } = await supabase.from("shops").update({
+        name, address, phone, description
+      }).eq("id", shop.id);
+
+      if (error) throw error;
+      setMessage("দোকানের তথ্য সফলভাবে আপডেট হয়েছে!");
+    } catch (err: any) {
+      setMessage("সমস্যা: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateShop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage("লোকেশন খোঁজা হচ্ছে...");
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const { error } = await supabase.from("shops").insert({
+              owner_id: user.id, name, address, phone, description, latitude, longitude
+            });
+            if (error) throw error;
+            setMessage("দোকান তৈরি হয়েছে!");
+            window.location.reload();
+          } catch (err: any) {
+            setMessage("সমস্যা: " + err.message);
+            setSaving(false);
+          }
+        },
+        () => { 
+          setMessage("লোকেশন পাওয়া যায়নি। GPS চালু করুন।"); 
+          setSaving(false); 
+        }
+      );
+    } catch (err: any) {
+      setMessage("সমস্যা: " + err.message);
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-10 text-center animate-pulse">লোড হচ্ছে...</div>;
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-20">
+      <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-40">
+        <Link href="/" className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-slate-100 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-700" />
+        </Link>
+        <h1 className="text-lg font-bold text-slate-800">আমার দোকান</h1>
+      </header>
+
+      <main className="max-w-md mx-auto p-4 mt-2">
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="bg-blue-50 rounded-t-xl pb-4">
+            <CardTitle className="text-blue-800 flex items-center gap-2">
+              <Store className="w-5 h-5" />
+              {shop ? "দোকানের তথ্য এডিট করুন" : "নতুন দোকান খুলুন"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <form onSubmit={shop ? handleUpdate : handleCreateShop} className="space-y-4">
+              <div className="space-y-2">
+                <Label>দোকানের নাম</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label>ঠিকানা</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label>ফোন নম্বর</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>বিবরণ</Label>
+                <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+
+              {message && <p className="text-sm font-medium text-center text-blue-600">{message}</p>}
+
+              <button type="submit" disabled={saving} className="w-full inline-flex items-center justify-center rounded-md bg-blue-600 text-white h-10 px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {saving ? "অপেক্ষা করুন..." : shop ? "আপডেট করুন" : "দোকান তৈরি করুন"}
+              </button>
+            </form>
+
+            {shop && (
+              <div className="mt-6 pt-4 border-t">
+                <Link 
+                  href={`/product/manage/${shop.id}`} 
+                  className="w-full inline-flex items-center justify-center rounded-md bg-green-600 hover:bg-green-700 text-white h-10 px-4 py-2 text-sm font-medium transition-colors"
+                >
+                  <PackageSearch className="w-4 h-4 mr-2" /> পণ্য ম্যানেজ করুন
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      <BottomNav role="seller" />
+    </div>
+  );
+}
