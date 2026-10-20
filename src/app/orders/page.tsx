@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, MessageCircle, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Clock, CheckCircle2, XCircle, CheckCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { redirect } from "next/navigation";
 
@@ -22,6 +22,7 @@ export default async function OrdersPage() {
     .order("created_at", { ascending: false });
 
   const getStatusIcon = (status: string) => {
+    if (status === 'completed') return <span className="flex items-center gap-1 text-blue-600 text-xs font-bold"><CheckCircle className="w-3 h-3"/> সম্পন্ন</span>;
     if (status === 'accepted') return <span className="flex items-center gap-1 text-green-600 text-xs font-bold"><CheckCircle2 className="w-3 h-3"/> গৃহীত</span>;
     if (status === 'rejected') return <span className="flex items-center gap-1 text-red-600 text-xs font-bold"><XCircle className="w-3 h-3"/> বাতিল</span>;
     return <span className="flex items-center gap-1 text-orange-500 text-xs font-bold"><Clock className="w-3 h-3"/> অপেক্ষমাণ</span>;
@@ -30,7 +31,6 @@ export default async function OrdersPage() {
   return (
     <div className="min-h-screen bg-slate-50/80 pb-20">
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-40">
-        {/* ✅ Button asChild বাদ */}
         <Link href="/" className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-slate-100 transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-700" />
         </Link>
@@ -61,10 +61,8 @@ export default async function OrdersPage() {
                   <div className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded">
                     {order.products?.name}
                   </div>
-                  <Link href={`/chat/${order.id}`}>
-                    <Button size="sm" className="h-8 bg-slate-800 text-xs">
-                      <MessageCircle className="w-3 h-3 mr-1" /> চ্যাট
-                    </Button>
+                  <Link href={`/chat/${order.id}`} className="inline-flex items-center justify-center rounded-md bg-slate-800 text-white px-3 h-8 text-xs font-medium hover:bg-slate-900">
+                    <MessageCircle className="w-3 h-3 mr-1" /> চ্যাট
                   </Link>
                 </div>
               </CardContent>

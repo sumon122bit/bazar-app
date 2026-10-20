@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { User, Phone, Mail, Shield, ArrowLeft } from "lucide-react";
+import { User, Phone, Mail, Shield, ArrowLeft, Edit } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import BottomNav from "@/components/BottomNav";
 import { redirect } from "next/navigation";
@@ -17,11 +17,14 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-screen bg-slate-50/80 pb-20">
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-40">
-        {/* ✅ Button asChild বাদ, সরাসরি Link এবং Tailwind */}
         <Link href="/" className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-slate-100 transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-700" />
         </Link>
-        <h1 className="text-lg font-bold text-slate-800">আমার প্রোফাইল</h1>
+        <h1 className="text-lg font-bold text-slate-800 flex-1">আমার প্রোফাইল</h1>
+        {/* ✅ এখানে এডিট বাটন যোগ করা হলো */}
+        <Link href="/profile/edit" className="inline-flex items-center justify-center gap-1 text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors">
+          <Edit className="w-3.5 h-3.5" /> এডিট
+        </Link>
       </header>
 
       <main className="max-w-lg mx-auto px-4 mt-6 space-y-6">

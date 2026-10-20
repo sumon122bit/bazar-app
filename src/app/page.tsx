@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { Store, PackageSearch, MessageSquare, MapPin, Search, Clock, CheckCircle2, XCircle, MessageCircle, Settings } from "lucide-react";
+import { Store, PackageSearch, MessageSquare, MapPin, Search, Clock, CheckCircle2, XCircle, MessageCircle, Settings, CheckCircle } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import BottomNav from "@/components/BottomNav";
 import OrderActions from "@/components/OrderActions";
@@ -30,7 +30,7 @@ export default async function Home() {
           .from("orders")
           .select(`*, products(name), buyer:profiles!buyer_id(full_name)`)
           .eq("seller_id", user.id)
-          .eq("status", "pending")
+          .neq("status", "completed") // সম্পন্ন হওয়া অর্ডার হোমে দেখাবে না
           .order("created_at", { ascending: false });
         sellerOrders = orderData || [];
       } else {
@@ -47,6 +47,7 @@ export default async function Home() {
   }
 
   const getStatusDisplay = (status: string) => {
+    if (status === 'completed') return <span className="flex items-center gap-1 text-blue-600 text-xs font-bold bg-blue-50 px-2 py-1 rounded-full"><CheckCircle className="w-3 h-3"/> সম্পন্ন</span>;
     if (status === 'accepted') return <span className="flex items-center gap-1 text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full"><CheckCircle2 className="w-3 h-3"/> গৃহীত</span>;
     if (status === 'rejected') return <span className="flex items-center gap-1 text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full"><XCircle className="w-3 h-3"/> বাতিল</span>;
     return <span className="flex items-center gap-1 text-orange-500 text-xs font-bold bg-orange-50 px-2 py-1 rounded-full"><Clock className="w-3 h-3"/> অপেক্ষমাণ</span>;
@@ -143,15 +144,18 @@ export default async function Home() {
                 {sellerOrders.length > 0 && (
                   <div className="space-y-3">
                      <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-orange-500" /> নতুন অর্ডার
+                        <MessageSquare className="w-4 h-4 text-orange-500" /> চলমান অর্ডার
                      </h3>
                     <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
                       {sellerOrders.map((order) => (
-                        <Card key={order.id} className="min-w-[280px] snap-center border-orange-200 bg-white">
+                        <Card key={order.id} className="min-w-[280px] snap-center border-slate-200 bg-white">
                           <CardContent className="p-4">
-                            <p className="text-sm font-semibold text-slate-800">{order.buyer?.full_name}</p>
+                            <div className="flex justify-between items-start mb-1">
+                                <p className="text-sm font-semibold text-slate-800">{order.buyer?.full_name}</p>
+                                {getStatusDisplay(order.status)}
+                            </div>
                             <p className="text-xs text-gray-500 mt-1 mb-2 line-clamp-1">"{order.message}"</p>
-                            <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded mb-3">
+                            <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded mb-2">
                               পণ্য: <span className="font-semibold text-blue-600">{order.products?.name}</span>
                             </div>
                             <OrderActions orderId={order.id} currentStatus={order.status} />
