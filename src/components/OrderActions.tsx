@@ -4,13 +4,22 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Check, X, CheckCircle } from "lucide-react";
 
-export default function OrderActions({ orderId, currentStatus }: { orderId: string, currentStatus: string }) {
+export default function OrderActions({ orderId, currentStatus, productId }: { orderId: string, currentStatus: string, productId: string }) {
   const [status, setStatus] = useState(currentStatus);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
   const updateStatus = async (newStatus: string) => {
     setLoading(true);
+
+    // ✅ যদি অর্ডার "সম্পন্ন" করা হয়, তবে স্টক ১ কমিয়ে দাও
+    if (newStatus === 'completed' && productId) {
+      const { data: productData } = await supabase.from("products").select("stock").eq("id", productId).single();
+      if (productData && productData.stock > 0) {
+        await supabase.from("products").update({ stock: productData.stock - 1 }).eq("id", productId);
+      }
+    }
+
     const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
     if (!error) setStatus(newStatus);
     setLoading(false);

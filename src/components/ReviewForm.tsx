@@ -4,8 +4,9 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ShieldAlert } from "lucide-react";
 
-export default function ReviewForm({ shopId }: { shopId: string }) {
+export default function ReviewForm({ shopId, hasBought }: { shopId: string, hasBought: boolean }) {
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,11 +38,23 @@ export default function ReviewForm({ shopId }: { shopId: string }) {
     } else {
       setMessage("ধন্যবাদ! আপনার রিভিউ যোগ হয়েছে।");
       setComment("");
-      // পেজ রিফ্রেশ করে নতুন রিভিউ দেখানোর জন্য
       setTimeout(() => window.location.reload(), 1500);
     }
     setLoading(false);
   };
+
+  // ✅ যদি ইউজার এই দোকান থেকে কিছু না কিনে থাকে, তবে ফর্ম লুকিয়ে থাকবে
+  if (!hasBought) {
+    return (
+      <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg flex flex-col items-center text-center">
+        <ShieldAlert className="w-8 h-8 text-orange-400 mb-2" />
+        <p className="text-sm font-bold text-orange-800">রিভিউ দিতে পারবেন না</p>
+        <p className="text-xs text-orange-600 mt-1">
+          শুধুমাত্র এই দোকান থেকে পণ্য কেনা (অর্ডার সম্পন্ন করা) ক্রেতারাই রিভিউ দিতে পারবেন। ফেক রিভিউ প্রতিরোধে এই ব্যবস্থা।
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 bg-white p-4 rounded-lg border shadow-sm">

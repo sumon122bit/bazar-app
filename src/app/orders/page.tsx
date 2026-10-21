@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, MessageCircle, Clock, CheckCircle2, XCircle, CheckCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { redirect } from "next/navigation";
+import { formatDate } from "@/lib/location"; // ✅ নতুন ফরম্যাট ইমপোর্ট
 
 export default async function OrdersPage() {
   const supabase = await createClient();
@@ -50,7 +51,8 @@ export default async function OrdersPage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="font-bold text-slate-800">{order.buyer?.full_name}</p>
-                    <p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleDateString('bn-BD')}</p>
+                    {/* ✅ নতুন নিরাপদ তারিখ ফরম্যাট */}
+                    <p className="text-xs text-slate-500">{formatDate(order.created_at)}</p>
                   </div>
                   {getStatusIcon(order.status)}
                 </div>

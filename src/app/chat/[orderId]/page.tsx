@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Phone } from "lucide-react";
 import Link from "next/link";
 
 export default function ChatPage() {
@@ -30,9 +30,10 @@ export default function ChatPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (isMounted) setCurrentUser(user);
 
+      // ✅ এখানে profiles থেকে phone নম্বরও আনা হচ্ছে
       const { data: order } = await supabase
         .from("orders")
-        .select(`*, products(name), buyer:profiles!buyer_id(full_name), seller:profiles!seller_id(full_name)`)
+        .select(`*, products(name), buyer:profiles!buyer_id(full_name, phone), seller:profiles!seller_id(full_name, phone)`)
         .eq("id", orderId)
         .single();
       if (isMounted) setOrderInfo(order);
@@ -52,7 +53,6 @@ export default function ChatPage() {
         await supabase.removeChannel(channelRef.current);
       }
 
-      // রিয়েল-টাইম লিসেনার
       const channel = supabase
         .channel(`chat_${orderId}`)
         .on(
@@ -60,7 +60,6 @@ export default function ChatPage() {
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` },
           (payload) => {
             setMessages((prev) => {
-              // ডুপ্লিকেট মেসেজ আটকানোর জন্য
               if (prev.find((m) => m.id === payload.new.id)) return prev;
               return [...prev, payload.new];
             });
@@ -80,7 +79,7 @@ export default function ChatPage() {
         channelRef.current = null;
       }
     };
-  }, [orderId, supabase]);
+  }, [orderId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -93,7 +92,6 @@ export default function ChatPage() {
     const msgText = newMessage;
     setNewMessage("");
 
-    // ডেটাবেসে সেভ করা এবং ডেটা ফেরত নেওয়া
     const { data, error } = await supabase
       .from("messages")
       .insert({
@@ -104,7 +102,6 @@ export default function ChatPage() {
       .select()
       .single();
 
-    // ✅ নিজের স্ক্রিনে সাথে সাথে মেসেজ দেখানোর জন্য (যদি রিয়েল-টাইম কাজ না করে)
     if (data && !error) {
       setMessages((prev) => {
         if (prev.find((m) => m.id === data.id)) return prev;
@@ -118,6 +115,7 @@ export default function ChatPage() {
 
   const isSeller = currentUser?.id === orderInfo.seller_id;
   const otherPersonName = isSeller ? orderInfo.buyer?.full_name : orderInfo.seller?.full_name;
+  const otherPersonPhone = isSeller ? orderInfo.buyer?.phone : orderInfo.seller?.phone;
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -129,6 +127,17 @@ export default function ChatPage() {
           <h2 className="font-bold text-slate-800">{otherPersonName || "ইউজার"}</h2>
           <p className="text-xs text-blue-600 font-medium">পণ্য: {orderInfo.products?.name}</p>
         </div>
+        
+        {/* ✅ কল বাটন */}
+        {otherPersonPhone && (
+          <a 
+            href={`tel:${otherPersonPhone}`} 
+            className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+          </a>
+        )}
+        
         <Link href={`/shop/${orderInfo.product_id}`}>
            <Button variant="outline" size="sm" className="hidden sm:flex text-xs">দোকান</Button>
         </Link>

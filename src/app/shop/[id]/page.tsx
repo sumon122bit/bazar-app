@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/location";
 import { notFound } from "next/navigation";
@@ -14,6 +13,8 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
   
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data: shop, error: shopError } = await supabase.from("shops").select("*").eq("id", shopId).single();
   if (shopError || !shop) notFound();
 
@@ -25,6 +26,19 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
     .eq("shop_id", shopId)
     .order("created_at", { ascending: false });
 
+  let hasBought = false;
+  if (user) {
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("buyer_id", user.id)
+      .eq("seller_id", shop.owner_id)
+      .eq("status", "completed")
+      .limit(1);
+    
+    if (orders && orders.length > 0) hasBought = true;
+  }
+
   const avgRating = reviews && reviews.length > 0 
     ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1)
     : "নতুন";
@@ -34,7 +48,7 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
       <div className="max-w-4xl mx-auto space-y-6">
         
         <div className="flex items-center gap-4">
-          <Link href="/search" className="inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 h-9 px-4 text-sm font-medium">
+          <Link href="/" className="inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 h-9 px-4 text-sm font-medium">
             ← পেছনে যান
           </Link>
         </div>
@@ -73,19 +87,22 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
                 {products.map((product) => (
                   <Card key={product.id} className="hover:shadow-md transition-shadow flex flex-col justify-between">
                     <CardContent className="p-4">
+                      
+                      {/* ✅ এখানে ছবি বসানো হলো */}
+                      {product.image_url && (
+                        <img src={product.image_url} alt={product.name} className="w-full h-32 object-cover rounded-md mb-3" />
+                      )}
+
                       <div>
                         <h3 className="font-bold text-slate-800">{product.name}</h3>
                         <p className="text-xs text-gray-500 mb-2">{product.category || "সাধারণ"}</p>
                       </div>
                       <div className="flex justify-between items-center mt-3 mb-3">
                         <span className="text-lg font-bold text-green-600">{formatPrice(product.price)}</span>
-                        {/* স্টক ০ হলে লাল রঙে দেখাবে */}
                         <span className={`text-xs px-2 py-1 rounded font-medium ${product.stock > 0 ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-600'}`}>
                           {product.stock > 0 ? `স্টক: ${product.stock}` : 'স্টক শেষ'}
                         </span>
                       </div>
-                      
-                      {/* ✅ এখানে স্টক পাস করা হলো */}
                       <OrderButton productId={product.id} sellerId={shop.owner_id} stock={product.stock} />
                     </CardContent>
                   </Card>
@@ -99,7 +116,7 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
               <Star className="w-5 h-5 text-yellow-500" /> রিভিউ
             </h2>
             
-            <ReviewForm shopId={shop.id} />
+            <ReviewForm shopId={shop.id} hasBought={hasBought} />
 
             <div className="space-y-3 mt-4">
               {!reviews || reviews.length === 0 ? (
