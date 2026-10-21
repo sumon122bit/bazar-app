@@ -34,8 +34,8 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
       <div className="max-w-4xl mx-auto space-y-6">
         
         <div className="flex items-center gap-4">
-          <Link href="/search">
-            <Button variant="outline">← পেছনে যান</Button>
+          <Link href="/search" className="inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 h-9 px-4 text-sm font-medium">
+            ← পেছনে যান
           </Link>
         </div>
 
@@ -79,11 +79,14 @@ export default async function ShopDetailsPage({ params }: { params: Promise<{ id
                       </div>
                       <div className="flex justify-between items-center mt-3 mb-3">
                         <span className="text-lg font-bold text-green-600">{formatPrice(product.price)}</span>
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">স্টক: {product.stock}</span>
+                        {/* স্টক ০ হলে লাল রঙে দেখাবে */}
+                        <span className={`text-xs px-2 py-1 rounded font-medium ${product.stock > 0 ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-600'}`}>
+                          {product.stock > 0 ? `স্টক: ${product.stock}` : 'স্টক শেষ'}
+                        </span>
                       </div>
                       
-                      {/* এখানে যোগাযোগ বাটন বসানো হলো */}
-                      <OrderButton productId={product.id} sellerId={shop.owner_id} />
+                      {/* ✅ এখানে স্টক পাস করা হলো */}
+                      <OrderButton productId={product.id} sellerId={shop.owner_id} stock={product.stock} />
                     </CardContent>
                   </Card>
                 ))}

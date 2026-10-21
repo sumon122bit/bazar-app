@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { MessageSquare, X } from "lucide-react";
 
-export default function OrderButton({ productId, sellerId }: { productId: string, sellerId: string }) {
+export default function OrderButton({ productId, sellerId, stock }: { productId: string, sellerId: string, stock: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,6 +46,15 @@ export default function OrderButton({ productId, sellerId }: { productId: string
     setLoading(false);
   };
 
+  // ✅ স্টক ০ বা কম হলে বাটনটি অচল হয়ে যাবে
+  if (stock <= 0) {
+    return (
+      <Button disabled className="w-full bg-red-50 text-red-500 border border-red-200 text-sm h-9 cursor-not-allowed">
+        স্টক নেই
+      </Button>
+    );
+  }
+
   return (
     <>
       <Button onClick={() => setIsOpen(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-sm h-9">
@@ -53,7 +62,7 @@ export default function OrderButton({ productId, sellerId }: { productId: string
       </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <Card className="w-full max-w-sm p-4 relative">
             <button onClick={() => setIsOpen(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500">
               <X className="w-5 h-5" />

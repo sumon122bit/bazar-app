@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { Store, PackageSearch, MessageSquare, MapPin, Search, Clock, CheckCircle2, XCircle, MessageCircle, Settings, CheckCircle } from "lucide-react";
+import { Store, PackageSearch, MessageSquare, MapPin, Search, Clock, CheckCircle2, XCircle, MessageCircle, Settings, CheckCircle, Phone } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import BottomNav from "@/components/BottomNav";
 import OrderActions from "@/components/OrderActions";
+import { formatPrice } from "@/lib/location";
 
 export default async function Home() {
   let user = null;
   let profile = null;
-  let shop: any = null;
+  let sellerShop: any = null;
   let sellerOrders: any[] = [];
   let buyerOrders: any[] = [];
+  let feedShops: any[] = []; // ক্রেতার ফিডের জন্য সব দোকান
 
   try {
     const supabase = await createClient();
@@ -23,23 +25,34 @@ export default async function Home() {
       profile = profileData;
 
       if (profile?.role === 'seller') {
-        const { data: shopData } = await supabase.from("shops").select("*").eq("owner_id", user.id).limit(1).single();
-        shop = shopData;
+        const { data: shopData } = await supabase.from("shops").select("*").eq("owner_id", user.id).limit(1).maybeSingle();
+        sellerShop = shopData;
 
         const { data: orderData } = await supabase
           .from("orders")
           .select(`*, products(name), buyer:profiles!buyer_id(full_name)`)
           .eq("seller_id", user.id)
-          .neq("status", "completed") // সম্পন্ন হওয়া অর্ডার হোমে দেখাবে না
+          .neq("status", "completed")
           .order("created_at", { ascending: false });
         sellerOrders = orderData || [];
       } else {
+        // ক্রেতার অর্ডার
         const { data: orderData } = await supabase
           .from("orders")
           .select(`*, products(name, price), seller:profiles!seller_id(full_name)`)
           .eq("buyer_id", user.id)
           .order("created_at", { ascending: false });
         buyerOrders = orderData || [];
+
+        // ✅ ক্রেতার হোম ফিডের জন্য দোকান ও তাদের পণ্য আনা (ফেসবুক স্টাইল)
+        const { data: shopsData } = await supabase
+          .from("shops")
+          .select(`
+            *,
+            products (id, name, price, stock)
+          `)
+          .order("created_at", { ascending: false });
+        feedShops = shopsData || [];
       }
     }
   } catch (error) {
@@ -58,9 +71,7 @@ export default async function Home() {
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-14 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="bg-blue-600 p-1.5 rounded-lg">
-              <Store className="w-4 h-4 text-white" />
-            </div>
+            <div className="bg-blue-600 p-1.5 rounded-lg"><Store className="w-4 h-4 text-white" /></div>
             <h1 className="text-lg font-bold text-slate-800 tracking-tight">বাজার অ্যাপ</h1>
           </div>
           <div>{user ? <LogoutButton /> : <Link href="/login" className="inline-flex items-center justify-center rounded-md bg-blue-600 text-white h-9 px-4 text-sm font-medium hover:bg-blue-700">লগইন</Link>}</div>
@@ -82,13 +93,7 @@ export default async function Home() {
 
             {/* ক্রেতার ড্যাশবোর্ড */}
             {profile?.role === 'buyer' && (
-              <div className="space-y-6">
-                <Link href="/products">
-                  <div className="bg-white p-3 rounded-xl shadow-sm border flex items-center gap-3 text-slate-400">
-                    <Search className="w-5 h-5" />
-                    <span className="text-sm">কী খুঁজছেন? (যেমন: চাল, সাবান...)</span>
-                  </div>
-                </Link>
+              <div className="space-y-8">
                 <div className="grid grid-cols-2 gap-3">
                   <Link href="/search">
                     <Card className="border-0 bg-blue-600 text-white h-full">
@@ -108,9 +113,62 @@ export default async function Home() {
                   </Link>
                 </div>
 
+                {/* ✅ ফেসবুক স্টাইল হোম ফিড */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold text-slate-800 border-b pb-2">আপনার এলাকার দোকানসমূহ</h3>
+                  
+                  {feedShops.length === 0 ? (
+                    <p className="text-center text-slate-500 py-10">কোনো দোকান পাওয়া যায়নি।</p>
+                  ) : (
+                    feedShops.map((shop) => (
+                      <Card key={shop.id} className="overflow-hidden shadow-sm border-slate-200">
+                        {/* দোকানের কভার/হেডার */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b flex justify-between items-center">
+                          <div>
+                            <h4 className="font-bold text-lg text-slate-800">{shop.name}</h4>
+                            <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                              <MapPin className="w-3 h-3" /> {shop.address} • <span className="font-medium text-blue-600">{shop.category}</span>
+                            </p>
+                          </div>
+                          <Link href={`/shop/${shop.id}`} className="text-xs font-bold text-blue-600 bg-white px-3 py-1.5 rounded-full shadow-sm border">
+                            ভিজিট করুন
+                          </Link>
+                        </div>
+
+                        {/* দোকানের পণ্য (হরাইজন্টাল স্ক্রল) */}
+                        <CardContent className="p-0">
+                          {shop.products && shop.products.length > 0 ? (
+                            <div className="flex overflow-x-auto gap-3 p-3 snap-x">
+                              {shop.products.slice(0, 5).map((product: any) => (
+                                <div key={product.id} className="min-w-[140px] max-w-[140px] snap-start border rounded-lg p-2 bg-slate-50">
+                                  <p className="text-sm font-bold text-slate-800 truncate">{product.name}</p>
+                                  <p className="text-green-600 font-bold text-sm mt-1">{formatPrice(product.price)}</p>
+                                  <p className="text-[10px] text-slate-500 mt-1">স্টক: {product.stock > 0 ? product.stock : <span className="text-red-500">শেষ</span>}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-400 p-4 text-center">এই দোকানে এখনো পণ্য যোগ করা হয়নি।</p>
+                          )}
+                          
+                          {/* অ্যাকশন বার (কল ও মেসেজ) */}
+                          <div className="flex border-t divide-x">
+                            <a href={`tel:${shop.phone}`} className="flex-1 py-2 flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-colors">
+                              <Phone className="w-4 h-4" /> কল করুন
+                            </a>
+                            <Link href={`/shop/${shop.id}`} className="flex-1 py-2 flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-colors">
+                              <MessageCircle className="w-4 h-4" /> মেসেজ/কেনাকাটা
+                            </Link>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+
                 {buyerOrders.length > 0 && (
                   <div className="space-y-3 mt-8">
-                    <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
+                    <h3 className="text-md font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
                       <MessageSquare className="w-4 h-4 text-blue-600" /> আমার অর্ডারসমূহ
                     </h3>
                     <div className="space-y-3">
@@ -138,7 +196,7 @@ export default async function Home() {
               </div>
             )}
 
-            {/* দোকানদারের ড্যাশবোর্ড */}
+            {/* দোকানদারের ড্যাশবোর্ড (আগের মতোই) */}
             {profile?.role === 'seller' && (
               <div className="space-y-6">
                 {sellerOrders.length > 0 && (
@@ -170,8 +228,7 @@ export default async function Home() {
                   <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
                     <Store className="w-4 h-4 text-blue-600" /> আমার দোকান
                   </h3>
-                  
-                  {!shop ? (
+                  {!sellerShop ? (
                     <Card className="border-dashed border-2 bg-slate-50/50">
                       <CardContent className="flex flex-col items-center justify-center py-8 text-center">
                         <Store className="w-10 h-10 text-slate-300 mb-3" />
@@ -182,14 +239,13 @@ export default async function Home() {
                   ) : (
                     <Card className="border-slate-200 shadow-sm">
                       <CardContent className="p-4">
-                        <h4 className="font-bold text-slate-800 text-lg">{shop.name}</h4>
-                        <p className="text-xs text-slate-500 mt-1 mb-4">{shop.address}</p>
-                        
+                        <h4 className="font-bold text-slate-800 text-lg">{sellerShop.name}</h4>
+                        <p className="text-xs text-slate-500 mt-1 mb-4">{sellerShop.address} • {sellerShop.category}</p>
                         <div className="flex gap-2">
-                          <Link href={`/product/manage/${shop.id}`} className="flex-1 inline-flex items-center justify-center rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 h-9 text-xs font-medium">
+                          <Link href={`/product/manage/${sellerShop.id}`} className="flex-1 inline-flex items-center justify-center rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 h-9 text-xs font-medium">
                             <PackageSearch className="w-4 h-4 mr-1" /> পণ্য ম্যানেজ
                           </Link>
-                          <Link href={`/shop/${shop.id}`} className="flex-1 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 h-9 text-xs font-medium">
+                          <Link href={`/shop/${sellerShop.id}`} className="flex-1 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 h-9 text-xs font-medium">
                             ক্রেতার ভিউ
                           </Link>
                           <Link href="/shop/my-shop" className="inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 h-9 w-9 p-0">
@@ -205,9 +261,7 @@ export default async function Home() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="bg-blue-100 p-6 rounded-full mb-6">
-              <Store className="w-16 h-16 text-blue-600" />
-            </div>
+            <div className="bg-blue-100 p-6 rounded-full mb-6"><Store className="w-16 h-16 text-blue-600" /></div>
             <h2 className="text-2xl font-bold mb-2 text-slate-800">আপনার এলাকার বাজার হাতের মুঠোয়</h2>
             <p className="text-slate-500 mb-6 text-sm px-4">কাছাকাছি দোকান খুঁজুন, পণ্যের দাম জানুন এবং সরাসরি যোগাযোগ করুন।</p>
             <Link href="/login" className="w-full max-w-xs inline-flex items-center justify-center rounded-xl bg-blue-600 text-white py-4 text-lg font-medium hover:bg-blue-700">

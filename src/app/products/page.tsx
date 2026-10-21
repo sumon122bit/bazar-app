@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // ✅ রাউটার ইমপোর্ট
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ export default function ProductSearchPage() {
   const [searched, setSearched] = useState(false);
   
   const supabase = createClient();
-  const router = useRouter(); // ✅ রাউটার ডিক্লেয়ার
+  const router = useRouter();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +33,6 @@ export default function ProductSearchPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-40">
-        {/* ✅ ব্যাক বাটন ফিক্সড */}
         <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -58,14 +57,24 @@ export default function ProductSearchPage() {
               {products.map((product) => (
                 <Card key={product.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg text-gray-800">{product.name}</CardTitle>
-                    <CardDescription>দোকান: <span className="font-semibold text-blue-600">{product.shops?.name}</span></CardDescription>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg text-gray-800">{product.name}</CardTitle>
+                        <CardDescription>দোকান: <span className="font-semibold text-blue-600">{product.shops?.name}</span></CardDescription>
+                      </div>
+                      {/* ✅ সার্চে স্টক শেষ থাকলে লাল লেখা */}
+                      {product.stock <= 0 && (
+                        <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded">স্টক শেষ</span>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-gray-500 mb-3">📍 {product.shops?.address}</p>
                     <div className="flex justify-between items-center">
                       <span className="text-xl font-bold text-green-600">{formatPrice(product.price)}</span>
-                      <Link href={`/shop/${product.shop_id}`}><Button variant="outline" size="sm">দোকান দেখুন</Button></Link>
+                      <Link href={`/shop/${product.shop_id}`} className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 h-8 px-3 text-xs font-medium">
+                        দোকান দেখুন
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
