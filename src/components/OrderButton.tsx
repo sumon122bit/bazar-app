@@ -38,16 +38,25 @@ export default function OrderButton({ productId, sellerId, stock }: { productId:
     if (error) {
       alert("সমস্যা হয়েছে: " + error.message);
     } else {
-      // ✅ ডেটাবেসে অর্ডার সেভ হওয়ার পর API-তে হিট করে নোটিফিকেশন পাঠানো
-      fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sellerId: sellerId,
-          title: 'নতুন অর্ডার এসেছে! 🛍️',
-          body: `${message || "একজন ক্রেতা আপনার পণ্যটি কিনতে চায়।"}`
-        })
-      }).catch(err => console.log("Notification error:", err));
+      // ✅ API কল করে রেসপন্স চেক করা
+      try {
+        const res = await fetch('/api/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sellerId: sellerId,
+            title: 'নতুন অর্ডার এসেছে! 🛍️',
+            body: `${message || "একজন ক্রেতা আপনার পণ্যটি কিনতে চায়।"}`
+          })
+        });
+        
+        if (!res.ok) {
+          const data = await res.json();
+          alert("নোটিফিকেশন এরর: " + (data.error || "API Failed"));
+        }
+      } catch (err) {
+        console.error("Fetch Error:", err);
+      }
 
       setSuccess(true);
       setTimeout(() => {
