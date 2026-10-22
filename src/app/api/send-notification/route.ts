@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // VAPID Keys সেটআপ
 webpush.setVapidDetails(
-  'mailto:test@example.com', // এখানে আপনার ইমেইল দিতে পারেন
+  'mailto:test@example.com',
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
@@ -13,34 +13,44 @@ export async function POST(req: Request) {
   try {
     const { sellerId, title, body } = await req.json();
 
-    // Supabase অ্যাডমিন ক্লায়েন্ট (নোটিফিকেশন পাঠানোর জন্য ডেটাবেসে ঢুকতে হবে)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // ওই দোকানদারের সব সাবস্ক্রিপশন বের করা
+    // সাবস্ক্রিপশন খোঁজা
     const { data: subscriptions, error } = await supabase
       .from('push_subscriptions')
       .select('subscription')
       .eq('user_id', sellerId);
 
-    if (error || !subscriptions || subscriptions.length === 0) {
-      return NextResponse.json({ message: 'No subscriptions found' }, { status: 404 });
+    if (error) {
+      return NextResponse.json({ error: "DB Error: " + error.message }, { status: 500 });
     }
 
-    // প্রতিটি সাবস্ক্রিপশনে নোটিফিকেশন পাঠানো
+    if (!subscriptions || subscriptions.length === 0) {
+      return NextResponse.json({ error: "No subscriptions found for this seller." }, { status: 404 });
+    }
+
     const payload = JSON.stringify({ title, body, url: '/' });
-    
-    const sendPromises = subscriptions.map((sub) =>
-      webpush.sendNotification(sub.subscription, payload).catch((err) => {
-        console.error("Push Error:", err);
-      })
-    );
+    let successCount = 0;
+    let failCount = 0;
 
-    await Promise.all(sendPromises);
+    for (const sub of subscriptions) {
+      try {
+        await webpush.sendNotification(sub.subscription, payload);
+        successCount++;
+      } catch (err: any) {
+        console.error("Push Error:", err.statusCode, err.body);
+        failCount++;
+      }
+    }
 
-    return NextResponse.json({ success: true, message: 'Notifications sent' });
+    return NextResponse.json({ 
+      success: true, 
+      message: `Sent: ${successCount}, Failed: ${failCount}` 
+    });
+
   } catch (error: any) {
     console.error("API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
