@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { Store, PackageSearch, MessageSquare, MapPin, Search, Clock, CheckCircle2, XCircle, MessageCircle, Settings, CheckCircle, Phone, QrCode, Receipt } from "lucide-react";
+import { Store, PackageSearch, MessageSquare, MapPin, Search, Clock, CheckCircle2, XCircle, MessageCircle, Settings, CheckCircle, Phone, QrCode, Receipt, Tag, Wallet, TrendingUp, AlertTriangle } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import BottomNav from "@/components/BottomNav";
 import OrderActions from "@/components/OrderActions";
 import CancelOrderButton from "@/components/CancelOrderButton";
-import EnableNotification from "@/components/EnableNotification"; // ✅ নতুন নোটিফিকেশন বাটন ইমপোর্ট
+import EnableNotification from "@/components/EnableNotification";
 import { formatPrice } from "@/lib/location";
 
 export default async function Home() {
@@ -16,6 +16,11 @@ export default async function Home() {
   let sellerOrders: any[] = [];
   let buyerOrders: any[] = [];
   let feedShops: any[] = [];
+
+  // ✅ নতুন ভ্যারিয়েবল (সেলস রিপোর্টের জন্য)
+  let totalSales = 0;
+  let pendingOrdersCount = 0;
+  let outOfStockCount = 0;
 
   try {
     const supabase = await createClient();
@@ -30,13 +35,31 @@ export default async function Home() {
         const { data: shopData } = await supabase.from("shops").select("*").eq("owner_id", user.id).limit(1).maybeSingle();
         sellerShop = shopData;
 
-        const { data: orderData } = await supabase
+        // সব অর্ডার আনা (হিসাব করার জন্য)
+        const { data: allOrdersData } = await supabase
           .from("orders")
-          .select(`*, products(name), buyer:profiles!buyer_id(full_name)`)
+          .select(`*, products(name, price), buyer:profiles!buyer_id(full_name)`)
           .eq("seller_id", user.id)
-          .in("status", ["pending", "accepted"]) 
           .order("created_at", { ascending: false });
-        sellerOrders = orderData || [];
+        
+        const allOrders = allOrdersData || [];
+
+        // চলমান অর্ডারগুলো ফিল্টার করা (UI-তে দেখানোর জন্য)
+        sellerOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted');
+
+        // ✅ হিসাব-নিকাশ
+        totalSales = allOrders
+          .filter(o => o.status === 'completed')
+          .reduce((sum, order) => sum + (order.products?.price || 0), 0);
+          
+        pendingOrdersCount = allOrders.filter(o => o.status === 'pending').length;
+
+        // স্টক শেষ হওয়া পণ্যের সংখ্যা
+        if (sellerShop) {
+          const { data: productsData } = await supabase.from("products").select("stock").eq("shop_id", sellerShop.id);
+          outOfStockCount = productsData?.filter(p => p.stock <= 0).length || 0;
+        }
+
       } else {
         const { data: orderData } = await supabase
           .from("orders")
@@ -79,7 +102,6 @@ export default async function Home() {
         {user ? (
           <div className="space-y-6">
             
-            {/* ওয়েলকাম সেকশন (এখানে নোটিফিকেশন বাটন বসানো হলো) */}
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xl">
                 {profile?.full_name?.charAt(0) || "U"}
@@ -88,14 +110,25 @@ export default async function Home() {
                 <p className="text-sm text-slate-500">স্বাগতম,</p>
                 <h2 className="text-xl font-bold text-slate-800">{profile?.full_name || "বন্ধু"}</h2>
               </div>
-              
-              {/* ✅ নোটিফিকেশন বাটন */}
               {profile?.role === 'seller' && (
                 <div className="ml-auto">
                   <EnableNotification />
                 </div>
               )}
             </div>
+
+            {/* ✅ সবাই "ব্যক্তিগত মার্কেট" বাটনটি দেখতে পাবে */}
+            <Link href="/classifieds">
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="bg-orange-100 p-2 rounded-full"><Tag className="w-6 h-6 text-orange-600" /></div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">ব্যক্তিগত মার্কেট (Buy & Sell)</h4>
+                    <p className="text-xs text-slate-500">পুরোনো জিনিস কিনুন বা বিক্রি করুন</p>
+                  </div>
+                </div>
+              </div>
+            </Link>
 
             {profile?.role === 'buyer' && (
               <div className="space-y-8">
@@ -104,7 +137,7 @@ export default async function Home() {
                     <Card className="border-0 bg-blue-600 text-white h-full">
                       <CardContent className="p-4 flex flex-col items-center justify-center space-y-2">
                         <MapPin className="w-8 h-8 opacity-80" />
-                        <h4 className="font-bold">কাছাকাছি দোকান</h4>
+                        <h4 className="font-bold text-sm">কাছাকাছি দোকান</h4>
                       </CardContent>
                     </Card>
                   </Link>
@@ -112,7 +145,7 @@ export default async function Home() {
                     <Card className="border-0 bg-green-600 text-white h-full">
                       <CardContent className="p-4 flex flex-col items-center justify-center space-y-2">
                         <PackageSearch className="w-8 h-8 opacity-80" />
-                        <h4 className="font-bold">পণ্য সার্চ</h4>
+                        <h4 className="font-bold text-sm">পণ্য সার্চ</h4>
                       </CardContent>
                     </Card>
                   </Link>
@@ -195,6 +228,34 @@ export default async function Home() {
 
             {profile?.role === 'seller' && (
               <div className="space-y-6">
+                
+                {/* ✅ নতুন সেলস রিপোর্ট (Business Dashboard) */}
+                <div className="grid grid-cols-3 gap-3">
+                  <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-sm">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <Wallet className="w-6 h-6 mb-1 opacity-80" />
+                      <p className="text-[10px] opacity-90">মোট বিক্রি</p>
+                      <h3 className="font-bold text-sm">{formatPrice(totalSales)}</h3>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-sm">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <TrendingUp className="w-6 h-6 mb-1 opacity-80" />
+                      <p className="text-[10px] opacity-90">অপেক্ষমাণ</p>
+                      <h3 className="font-bold text-sm">{pendingOrdersCount} টি</h3>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-sm">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <AlertTriangle className="w-6 h-6 mb-1 opacity-80" />
+                      <p className="text-[10px] opacity-90">স্টক শেষ</p>
+                      <h3 className="font-bold text-sm">{outOfStockCount} টি</h3>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {sellerOrders.length > 0 && (
                   <div className="space-y-3">
                      <h3 className="text-md font-bold text-slate-800 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-orange-500" /> চলমান অর্ডার</h3>

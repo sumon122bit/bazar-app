@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent } from "@/components/ui/card";
-import { User, Phone, Mail, Shield, ArrowLeft, Edit } from "lucide-react";
+import { User, Phone, Mail, Shield, ArrowLeft, Edit, LogOut, BookOpen, MessageSquare, Settings, HelpCircle } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import BottomNav from "@/components/BottomNav";
 import { redirect } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -21,52 +21,76 @@ export default async function ProfilePage() {
           <ArrowLeft className="w-5 h-5 text-slate-700" />
         </Link>
         <h1 className="text-lg font-bold text-slate-800 flex-1">আমার প্রোফাইল</h1>
-        {/* ✅ এখানে এডিট বাটন যোগ করা হলো */}
         <Link href="/profile/edit" className="inline-flex items-center justify-center gap-1 text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors">
           <Edit className="w-3.5 h-3.5" /> এডিট
         </Link>
       </header>
 
       <main className="max-w-lg mx-auto px-4 mt-6 space-y-6">
-        <div className="flex flex-col items-center">
-          <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-4xl mb-3 shadow-inner">
+        
+        {/* প্রোফাইল কার্ড */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col items-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-blue-600 font-bold text-4xl mb-3 shadow-md border-4 border-white z-10 relative">
             {profile?.full_name?.charAt(0) || <User className="w-10 h-10" />}
           </div>
-          <h2 className="text-2xl font-bold text-slate-800">{profile?.full_name || "নাম দেওয়া নেই"}</h2>
-          <span className={`mt-2 text-xs font-bold px-3 py-1 rounded-full ${profile?.role === 'seller' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+          <h2 className="text-2xl font-bold text-slate-800 z-10">{profile?.full_name || "নাম দেওয়া নেই"}</h2>
+          <span className={`mt-2 text-xs font-bold px-3 py-1 rounded-full z-10 ${profile?.role === 'seller' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
             {profile?.role === 'seller' ? 'দোকানদার' : 'ক্রেতা'}
           </span>
+
+          <div className="w-full flex justify-around mt-6 pt-4 border-t border-slate-100">
+             <div className="text-center">
+                <p className="text-xs text-slate-500 mb-1">ফোন</p>
+                <p className="text-sm font-semibold text-slate-800">{profile?.phone || "নেই"}</p>
+             </div>
+             <div className="text-center">
+                <p className="text-xs text-slate-500 mb-1">ইমেইল</p>
+                <p className="text-sm font-semibold text-slate-800 truncate max-w-[150px]">{user.email}</p>
+             </div>
+          </div>
         </div>
 
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-0 divide-y">
-            <div className="flex items-center gap-4 p-4">
-              <div className="bg-slate-100 p-2 rounded-full"><Mail className="w-5 h-5 text-slate-600" /></div>
-              <div>
-                <p className="text-xs text-slate-500">ইমেইল</p>
-                <p className="text-sm font-medium text-slate-800">{user.email}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 p-4">
-              <div className="bg-slate-100 p-2 rounded-full"><Phone className="w-5 h-5 text-slate-600" /></div>
-              <div>
-                <p className="text-xs text-slate-500">ফোন নম্বর</p>
-                <p className="text-sm font-medium text-slate-800">{profile?.phone || "যোগ করা হয়নি"}</p>
-              </div>
-            </div>
+        {/* মেনু লিস্ট */}
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">আপনার কাজসমূহ</p>
+          
+          {profile?.role === 'seller' ? (
+            <>
+              <Link href="/orders" className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50">
+                <div className="bg-orange-100 p-2 rounded-lg"><MessageSquare className="w-5 h-5 text-orange-600" /></div>
+                <span className="font-medium text-slate-700 flex-1">আমার অর্ডারসমূহ</span>
+                <ArrowLeft className="w-4 h-4 text-slate-400 rotate-180" />
+              </Link>
+              <Link href="/ledger" className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50">
+                <div className="bg-green-100 p-2 rounded-lg"><BookOpen className="w-5 h-5 text-green-600" /></div>
+                <span className="font-medium text-slate-700 flex-1">বাকির খাতা</span>
+                <ArrowLeft className="w-4 h-4 text-slate-400 rotate-180" />
+              </Link>
+            </>
+          ) : (
+            <Link href="/my-orders" className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50">
+              <div className="bg-orange-100 p-2 rounded-lg"><MessageSquare className="w-5 h-5 text-orange-600" /></div>
+              <span className="font-medium text-slate-700 flex-1">আমার অর্ডার ও চ্যাট</span>
+              <ArrowLeft className="w-4 h-4 text-slate-400 rotate-180" />
+            </Link>
+          )}
 
-            <div className="flex items-center gap-4 p-4">
-              <div className="bg-slate-100 p-2 rounded-full"><Shield className="w-5 h-5 text-slate-600" /></div>
-              <div>
-                <p className="text-xs text-slate-500">অ্যাকাউন্ট টাইপ</p>
-                <p className="text-sm font-medium text-slate-800 capitalize">{profile?.role}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mt-6">অন্যান্য</p>
+          
+          <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <div className="bg-slate-100 p-2 rounded-lg"><Settings className="w-5 h-5 text-slate-600" /></div>
+            <span className="font-medium text-slate-700 flex-1">সেটিংস</span>
+            <span className="text-xs text-slate-400">শীঘ্রই</span>
+          </div>
+          <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <div className="bg-slate-100 p-2 rounded-lg"><HelpCircle className="w-5 h-5 text-slate-600" /></div>
+            <span className="font-medium text-slate-700 flex-1">সাহায্য ও সাপোর্ট</span>
+            <span className="text-xs text-slate-400">শীঘ্রই</span>
+          </div>
+        </div>
 
-        <div className="flex justify-center mt-4">
+        <div className="pt-4">
           <LogoutButton />
         </div>
       </main>
