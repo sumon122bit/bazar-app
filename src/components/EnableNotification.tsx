@@ -18,63 +18,63 @@ function urlBase64ToUint8Array(base64String: string) {
 export default function EnableNotification() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSupported, setIsSupported] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        reg.pushManager.getSubscription().then((sub) => {
-          if (sub) setIsSubscribed(true);
-          setLoading(false);
-        });
-      }).catch(err => {
-        console.error("SW Register Error:", err);
-        setLoading(false);
-      });
-    } else {
+    const checkSupport = () => {
+      // ✅ যদি অ্যাপ হয় (Capacitor), তবে ওয়েব নোটিফিকেশন বাটন দেখাবো না
+      const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor;
+      
+      if (!isCapacitor && typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          if (reg.pushManager) {
+            setIsSupported(true);
+            reg.pushManager.getSubscription().then((sub) => {
+              if (sub) setIsSubscribed(true);
+            });
+          }
+        }).catch((err) => console.log("SW Error:", err));
+      }
       setLoading(false);
-    }
+    };
+    checkSupport();
   }, []);
 
   const handleEnable = async () => {
     try {
       setLoading(true);
-      
       const pubKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!pubKey) {
-        throw new Error("VAPID Public Key পাওয়া যায়নি! Vercel-এ Environment Variable চেক করুন।");
-      }
+      if (!pubKey) throw new Error("VAPID Key missing");
 
       const register = await navigator.serviceWorker.register('/sw.js');
-      
-      const subscribeOptions = {
+      if (!register.pushManager) return; // Safety check
+
+      const subscription = await register.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(pubKey)
-      };
-      
-      const subscription = await register.pushManager.subscribe(subscribeOptions);
+      });
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("ইউজার লগইন নেই!");
+      if (!user) return;
 
-      const { error } = await supabase.from("push_subscriptions").insert({
+      await supabase.from("push_subscriptions").insert({
         user_id: user.id,
         subscription: subscription.toJSON()
       });
       
-      if (error) throw error;
-      
       setIsSubscribed(true);
     } catch (error: any) {
-      console.error("Notification permission error:", error);
-      // ✅ আসল এররটা স্ক্রিনে দেখাবে
-      alert(`সমস্যা: ${error.name}\n\nবিস্তারিত: ${error.message}`);
+      console.log("Notification error:", error);
+      // এরর অ্যালার্ট সরিয়ে দেওয়া হলো, যাতে ইউজার বিরক্ত না হয়
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) return null;
+  if (!isSupported) return null; // সাপোর্ট না করলে বাটনই দেখাবে না
+
   if (isSubscribed) {
     return (
       <div className="flex items-center gap-2 text-xs font-medium text-green-600 bg-green-50 px-3 py-2 rounded-lg">

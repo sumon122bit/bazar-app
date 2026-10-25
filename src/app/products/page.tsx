@@ -72,7 +72,7 @@ export default function ProductSearchPage() {
                     <p className="text-sm text-gray-500 mb-3">📍 {product.shops?.address}</p>
                     <div className="flex justify-between items-center">
                       <span className="text-xl font-bold text-green-600">{formatPrice(product.price)}</span>
-                      <Link href={`/shop/${product.shop_id}`} className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 h-8 px-3 text-xs font-medium">
+                      <Link href={`/shop?id=${product.shop_id}`} className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 h-8 px-3 text-xs font-medium">
                         দোকান দেখুন
                       </Link>
                     </div>

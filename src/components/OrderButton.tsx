@@ -38,9 +38,9 @@ export default function OrderButton({ productId, sellerId, stock }: { productId:
     if (error) {
       alert("সমস্যা হয়েছে: " + error.message);
     } else {
-      // ✅ API কল করে রেসপন্স চেক করা
+      // ✅ অ্যাপের জন্য অ্যাবসোলিউট URL (Vercel Link) ব্যবহার করা হলো
       try {
-        const res = await fetch('/api/send-notification', {
+        await fetch('https://bazar-app-bd.vercel.app/api/send-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -49,13 +49,8 @@ export default function OrderButton({ productId, sellerId, stock }: { productId:
             body: `${message || "একজন ক্রেতা আপনার পণ্যটি কিনতে চায়।"}`
           })
         });
-        
-        if (!res.ok) {
-          const data = await res.json();
-          alert("নোটিফিকেশন এরর: " + (data.error || "API Failed"));
-        }
       } catch (err) {
-        console.error("Fetch Error:", err);
+        console.log("Notification error:", err);
       }
 
       setSuccess(true);

@@ -1,18 +1,47 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { User, Phone, Mail, Shield, ArrowLeft, Edit, LogOut, BookOpen, MessageSquare, Settings, HelpCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { User, ArrowLeft, Edit, BookOpen, MessageSquare, Settings, HelpCircle } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import BottomNav from "@/components/BottomNav";
-import { redirect } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
 
-export default async function ProfilePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function ProfilePage() {
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  const router = useRouter();
+  const supabase = createClient();
 
-  if (!user) redirect("/login");
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser) {
+          router.push("/login");
+          return;
+        }
+        
+        setUser(currentUser);
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        const { data } = await supabase.from("profiles").select("*").eq("id", currentUser.id).single();
+        setProfile(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProfile();
+  }, [router, supabase]);
+
+  if (loading) return <div className="p-10 text-center animate-pulse min-h-screen flex items-center justify-center">লোড হচ্ছে...</div>;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-slate-50/80 pb-20">

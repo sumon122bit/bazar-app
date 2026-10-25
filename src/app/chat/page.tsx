@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Phone } from "lucide-react";
-import Link from "next/link";
 
-export default function ChatPage() {
-  const params = useParams();
-  const orderId = params.orderId as string;
+function ChatContent() {
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get("id"); // ✅ Query Parameter থেকে আইডি নেওয়া হচ্ছে
   const router = useRouter();
   
   const [messages, setMessages] = useState<any[]>([]);
@@ -27,10 +26,14 @@ export default function ChatPage() {
     let isMounted = true;
 
     const initChat = async () => {
+      if (!orderId) {
+        router.push("/");
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (isMounted) setCurrentUser(user);
 
-      // ✅ এখানে profiles থেকে phone নম্বরও আনা হচ্ছে
       const { data: order } = await supabase
         .from("orders")
         .select(`*, products(name), buyer:profiles!buyer_id(full_name, phone), seller:profiles!seller_id(full_name, phone)`)
@@ -79,7 +82,7 @@ export default function ChatPage() {
         channelRef.current = null;
       }
     };
-  }, [orderId]);
+  }, [orderId, router]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,7 +90,7 @@ export default function ChatPage() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentUser) return;
+    if (!newMessage.trim() || !currentUser || !orderId) return;
     
     const msgText = newMessage;
     setNewMessage("");
@@ -111,7 +114,7 @@ export default function ChatPage() {
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center animate-pulse">চ্যাট লোড হচ্ছে...</div>;
-  if (!orderInfo) return <div className="h-screen flex items-center justify-center text-red-500">অর্ডার পাওয়া যায়নি!</div>;
+  if (!orderInfo) return <div className="h-screen flex items-center justify-center text-red-500 font-bold">অর্ডার পাওয়া যায়নি!</div>;
 
   const isSeller = currentUser?.id === orderInfo.seller_id;
   const otherPersonName = isSeller ? orderInfo.buyer?.full_name : orderInfo.seller?.full_name;
@@ -120,7 +123,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3 shadow-sm shrink-0">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+        <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="rounded-full">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
@@ -128,19 +131,11 @@ export default function ChatPage() {
           <p className="text-xs text-blue-600 font-medium">পণ্য: {orderInfo.products?.name}</p>
         </div>
         
-        {/* ✅ কল বাটন */}
         {otherPersonPhone && (
-          <a 
-            href={`tel:${otherPersonPhone}`} 
-            className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition-colors"
-          >
+          <a href={`tel:${otherPersonPhone}`} className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition-colors">
             <Phone className="w-4 h-4" />
           </a>
         )}
-        
-        <Link href={`/shop/${orderInfo.product_id}`}>
-           <Button variant="outline" size="sm" className="hidden sm:flex text-xs">দোকান</Button>
-        </Link>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -175,5 +170,13 @@ export default function ChatPage() {
         </form>
       </footer>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center">লোড হচ্ছে...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, User, Store, MapPin, BookOpen, ScanLine, MessageSquare } from "lucide-react";
+import {
+  Home,
+  User,
+  Store,
+  MapPin,
+  BookOpen,
+  ScanLine,
+  MessageSquare,
+} from "lucide-react";
 
 export default function BottomNav({ role }: { role: string }) {
   const pathname = usePathname();
@@ -10,57 +18,74 @@ export default function BottomNav({ role }: { role: string }) {
   const sellerLinks = [
     { name: "হোম", href: "/", icon: Home },
     { name: "অর্ডার", href: "/orders", icon: MessageSquare },
-    { name: "খাতা", href: "/ledger", icon: BookOpen, isFab: true },
+    { name: "খাতা", href: "/ledger", icon: BookOpen },
     { name: "দোকান", href: "/shop/my-shop", icon: Store },
     { name: "প্রোফাইল", href: "/profile", icon: User },
   ];
 
   const buyerLinks = [
     { name: "হোম", href: "/", icon: Home },
-    { name: "চ্যাট", href: "/my-orders", icon: MessageSquare }, // ✅ সার্চের জায়গায় চ্যাট
-    { name: "স্ক্যান", href: "/scan", icon: ScanLine, isFab: true },
-    { name: "ম্যাপ", href: "/search", icon: MapPin }, // ✅ ম্যাপ আবার ফিরে এসেছে
+    { name: "চ্যাট", href: "/my-orders", icon: MessageSquare },
+    { name: "স্ক্যান", href: "/scan", icon: ScanLine },
+    { name: "ম্যাপ", href: "/search", icon: MapPin },
     { name: "প্রোফাইল", href: "/profile", icon: User },
   ];
 
   const activeLinks = role === "seller" ? sellerLinks : buyerLinks;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_20px_-5px_rgba(0,0,0,0.05)] z-[999] pb-safe">
-      <div className="flex justify-around items-end h-[60px] max-w-lg mx-auto px-1">
+    <nav
+      aria-label="প্রধান নেভিগেশন"
+      className="fixed inset-x-0 bottom-0 z-[999] px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+10px)] pointer-events-auto"
+    >
+      <div className="mx-auto flex h-[64px] w-full max-w-md items-center justify-around rounded-full border border-slate-200/80 bg-white/95 px-2 shadow-[0_-6px_28px_-8px_rgba(15,23,42,0.18)] backdrop-blur-xl">
         {activeLinks.map((link) => {
-          const isActive = pathname === link.href;
+          const isActive =
+            link.href === "/"
+              ? pathname === "/"
+              : pathname === link.href || pathname.startsWith(`${link.href}/`);
           const Icon = link.icon;
-
-          if (link.isFab) {
-            return (
-              <Link key={link.name} href={link.href} className="relative -top-4 flex flex-col items-center justify-center">
-                <div className="flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-300 border-[3px] border-white transition-transform active:scale-95">
-                  <Icon className="w-6 h-6" strokeWidth={2.5} />
-                </div>
-                <span className={`text-[10px] mt-1 ${isActive ? "text-blue-600 font-bold" : "text-slate-500 font-medium"}`}>
-                  {link.name}
-                </span>
-              </Link>
-            );
-          }
 
           return (
             <Link
               key={link.name}
               href={link.href}
-              className={`flex flex-col items-center justify-center w-full h-full pb-1 space-y-1 transition-all ${
-                isActive ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
-              }`}
+              aria-label={link.name}
+              aria-current={isActive ? "page" : undefined}
+              className={[
+                "group flex h-[46px] min-w-0 shrink items-center justify-center rounded-full",
+                "transition-[background-color,color,padding,transform] duration-300 ease-out",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+                "active:scale-[0.97]",
+                isActive
+                  ? "gap-2 bg-violet-600 px-4 text-white shadow-sm shadow-violet-300/50"
+                  : "w-[46px] px-0 text-slate-500 hover:bg-violet-50 hover:text-violet-600",
+              ].join(" ")}
             >
-              <div className={`p-1 rounded-xl transition-all ${isActive ? "bg-blue-50" : "bg-transparent"}`}>
-                <Icon className={`w-5 h-5 ${isActive ? "fill-blue-100" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
-              </div>
-              <span className={`text-[10px] ${isActive ? "font-bold" : "font-medium"}`}>{link.name}</span>
+              <Icon
+                className={[
+                  "h-[21px] w-[21px] shrink-0 transition-transform duration-300",
+                  isActive ? "scale-100" : "group-hover:scale-105",
+                ].join(" ")}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
+
+              <span
+                className={[
+                  "overflow-hidden whitespace-nowrap text-[12px] font-semibold",
+                  "transition-[max-width,opacity,transform] duration-300 ease-out",
+                  isActive
+                    ? "max-w-[90px] translate-x-0 opacity-100"
+                    : "pointer-events-none max-w-0 translate-x-1 opacity-0",
+                ].join(" ")}
+                aria-hidden={!isActive}
+              >
+                {link.name}
+              </span>
             </Link>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

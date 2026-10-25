@@ -123,7 +123,7 @@ export default function SearchPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <Link href={`/shop/${shop.id}`} className="w-full inline-flex items-center justify-center rounded-md bg-blue-600 text-white h-9 text-sm font-medium hover:bg-blue-700">দোকান দেখুন</Link>
+                    <Link href={`/shop?id=${shop.id}`} className="w-full inline-flex items-center justify-center rounded-md bg-blue-600 text-white h-9 text-sm font-medium hover:bg-blue-700">দোকান দেখুন</Link>
                   </CardContent>
                 </Card>
               ))}

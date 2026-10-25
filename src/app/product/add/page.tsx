@@ -78,7 +78,7 @@ function AddProductForm() {
       if (error) throw error;
 
       setMessage("সফলভাবে যোগ হয়েছে!");
-      setTimeout(() => router.push(`/product/manage/${shopId}`), 1500);
+      setTimeout(() => router.push(`/product/manage?shopId=${shopId}`), 1500);
       
     } catch (error: any) {
       setMessage("সমস্যা: " + error.message);

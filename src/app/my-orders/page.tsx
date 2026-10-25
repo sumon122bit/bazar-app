@@ -1,23 +1,52 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { ArrowLeft, MessageCircle, Clock, CheckCircle2, XCircle, CheckCircle, Receipt } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import CancelOrderButton from "@/components/CancelOrderButton";
-import { redirect } from "next/navigation";
-import { formatDate } from "@/lib/location"; // ✅ নতুন ফরম্যাট ইমপোর্ট
+import { formatDate } from "@/lib/location";
 
-export default async function MyOrdersPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function MyOrdersPage() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  const router = useRouter();
+  const supabase = createClient();
 
-  if (!user) redirect("/login");
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push("/login");
+          return;
+        }
 
-  const { data: orders } = await supabase
-    .from("orders")
-    .select(`*, products(name), seller:profiles!seller_id(full_name)`)
-    .eq("buyer_id", user.id)
-    .order("created_at", { ascending: false });
+        // প্রোফাইল আনা (বটম নেভের জন্য)
+        const { data: profileData } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        setProfile(profileData);
+
+        // অর্ডার আনা
+        const { data } = await supabase
+          .from("orders")
+          .select(`*, products(name), seller:profiles!seller_id(full_name)`)
+          .eq("buyer_id", user.id)
+          .order("created_at", { ascending: false });
+          
+        setOrders(data || []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [router, supabase]);
 
   const getStatusDisplay = (status: string) => {
     if (status === 'completed') return <span className="flex items-center gap-1 text-blue-600 text-xs font-bold bg-blue-50 px-2 py-1 rounded-full"><CheckCircle className="w-3 h-3"/> সম্পন্ন</span>;
@@ -25,6 +54,8 @@ export default async function MyOrdersPage() {
     if (status === 'rejected') return <span className="flex items-center gap-1 text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-full"><XCircle className="w-3 h-3"/> বাতিল</span>;
     return <span className="flex items-center gap-1 text-orange-500 text-xs font-bold bg-orange-50 px-2 py-1 rounded-full"><Clock className="w-3 h-3"/> অপেক্ষমাণ</span>;
   };
+
+  if (loading) return <div className="p-10 text-center animate-pulse min-h-screen flex items-center justify-center">লোড হচ্ছে...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50/80 pb-20">
@@ -36,7 +67,7 @@ export default async function MyOrdersPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 mt-4 space-y-3">
-        {!orders || orders.length === 0 ? (
+        {orders.length === 0 ? (
           <div className="text-center py-20">
             <MessageCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500">আপনি এখনো কোনো অর্ডার দেননি।</p>
@@ -46,43 +77,40 @@ export default async function MyOrdersPage() {
           </div>
         ) : (
           orders.map((order) => (
-            <Card key={order.id} className="border-slate-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="font-bold text-slate-800">{order.seller?.full_name}</p>
-                    {/* ✅ নতুন নিরাপদ তারিখ ফরম্যাট */}
-                    <p className="text-xs text-slate-500">{formatDate(order.created_at)}</p>
-                  </div>
-                  {getStatusDisplay(order.status)}
+            <div key={order.id} className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-bold text-slate-800">{order.seller?.full_name}</p>
+                  <p className="text-xs text-slate-500">{formatDate(order.created_at)}</p>
                 </div>
-                
-                <div className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg mb-3">
-                  {order.products?.name}
-                </div>
-                
-                <div className="flex gap-2">
-                  <Link href={`/chat/${order.id}`} className="flex-1 inline-flex items-center justify-center rounded-md bg-slate-800 text-white h-8 text-xs font-medium hover:bg-slate-900">
-                    <MessageCircle className="w-3 h-3 mr-1" /> চ্যাট করুন
-                  </Link>
+                {getStatusDisplay(order.status)}
+              </div>
+              
+              <div className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg mb-3">
+                {order.products?.name}
+              </div>
+              
+              <div className="flex gap-2">
+                <Link href={`/chat?id=${order.id}`} className="flex-1 inline-flex items-center justify-center rounded-md bg-slate-800 text-white h-8 text-xs font-medium hover:bg-slate-900">
+                  <MessageCircle className="w-3 h-3 mr-1" /> চ্যাট করুন
+                </Link>
 
-                  {order.status === 'pending' && (
-                    <CancelOrderButton orderId={order.id} />
-                  )}
+                {order.status === 'pending' && (
+                  <CancelOrderButton orderId={order.id} />
+                )}
 
-                  {order.status === 'completed' && (
-                      <Link href={`/receipt/${order.id}`} className="flex-1 inline-flex items-center justify-center rounded-md border border-blue-600 text-blue-600 bg-blue-50 h-8 text-xs font-medium hover:bg-blue-100">
-                        <Receipt className="w-3 h-3 mr-1" /> রশিদ
-                      </Link>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                {order.status === 'completed' && (
+                    <Link href={`/receipt?orderId=${order.id}`} className="flex-1 inline-flex items-center justify-center rounded-md border border-blue-600 text-blue-600 bg-blue-50 h-8 text-xs font-medium hover:bg-blue-100">
+                      <Receipt className="w-3 h-3 mr-1" /> রশিদ
+                    </Link>
+                )}
+              </div>
+            </div>
           ))
         )}
       </main>
 
-      <BottomNav role="buyer" />
+      <BottomNav role={profile?.role || "buyer"} />
     </div>
   );
 }
